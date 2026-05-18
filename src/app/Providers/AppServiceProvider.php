@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Policies\ActivityPolicy;
 use Filament\Actions\MountableAction;
 use Filament\Notifications\Livewire\Notifications;
@@ -29,17 +30,38 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Super Admin Access
+        |--------------------------------------------------------------------------
+        | Untuk project lokal/UTS, email di bawah ini akan dianggap punya semua akses.
+        | Ini membantu ketika menu Filament hilang karena role/permission belum ke-assign.
+        */
+        Gate::before(function (User $user, string $ability): ?bool {
+            $superAdminEmails = [
+                'admin@admin.com',
+            ];
+
+            return in_array($user->email, $superAdminEmails, true)
+                ? true
+                : null;
+        });
+
         Gate::policy(Activity::class, ActivityPolicy::class);
+
         Page::formActionsAlignment(Alignment::Right);
+
         Notifications::alignment(Alignment::End);
         Notifications::verticalAlignment(VerticalAlignment::End);
-        Page::$reportValidationErrorUsing = function (ValidationException $exception) {
+
+        Page::$reportValidationErrorUsing = function (ValidationException $exception): void {
             Notification::make()
                 ->title($exception->getMessage())
                 ->danger()
                 ->send();
         };
-        MountableAction::configureUsing(function (MountableAction $action) {
+
+        MountableAction::configureUsing(function (MountableAction $action): void {
             $action->modalFooterActionsAlignment(Alignment::Right);
         });
     }
